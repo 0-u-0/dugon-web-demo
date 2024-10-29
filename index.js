@@ -198,16 +198,16 @@ function blocker(secodes) {
 
 
 //TODO(CC): add sender pause
-function generateParticipantRow(tokenId, username) {
+function generateParticipantRow(userId, username) {
   const participantRow = document.createElement('div');
   participantRow.classList.add('participantRow');
-  participantRow.id = `participantRow-${tokenId}`;
+  participantRow.id = `participantRow-${userId}`;
   participantRow.innerHTML = `
   <img src="images/participant.png"><span class="labelText">${username} </span>
   <span class="imagesBox">
-    <input id="videoSwitch-${tokenId}" type="image" src="images/nowebcam.png" data-media="video" data-enable=false data-local=false
+    <input id="videoSwitch-${userId}" type="image" src="images/nowebcam.png" data-media="video" data-enable=false data-local=false
       onclick="mediaChange(this)" disabled=true>
-    <input id="audioSwitch-${tokenId}" type="image" src="images/nomic.png" data-media="audio" data-enable=false data-local=false
+    <input id="audioSwitch-${userId}" type="image" src="images/nomic.png" data-media="audio" data-enable=false data-local=false
       onclick="mediaChange(this)" disabled=true>
   </span>`;
 
@@ -221,6 +221,7 @@ function mediaChange(obj) {
 
   const stream = streams.get(id);
 
+  console.log(stream);
   if (enable === 'true') {
     stream.pause();
 
@@ -331,7 +332,7 @@ async function initSession(username, roomId) {
   });
 
   room.onuser = async user => {
-    console.log(user.name, ' in');
+    console.log(user.id, ' in');
     generateParticipantRow(user.id, user.name);
 
     user.onstream = (stream) => {
