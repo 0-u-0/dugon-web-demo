@@ -1,10 +1,13 @@
-const signalServer = `ws://127.0.0.1:8800`;
+const currentUrl = new URL(window.location.href);
+const hostWithoutPort = currentUrl.hostname;
+const signalServer = `ws://${hostWithoutPort}:8800`;
 //var
-let videoSource = null;
-let audioSource = null;
-let session = null;
-let streams = new Map();
-let localStream = new MediaStream();
+let videoStream = null;
+let audioStream = null;
+
+const streams = new Map();
+
+let room = null;
 
 //utils
 const $ = document.querySelector.bind(document);
@@ -215,8 +218,11 @@ function mediaChange(obj) {
   const { id, media, enable, local } = obj.dataset;
 
   console.log(obj.dataset);
+
+  const stream = streams.get(id);
+
   if (enable === 'true') {
-    session.pause(id);
+    stream.pause();
 
     if (media === 'video') {
       obj.src = 'images/nowebcam.png';
@@ -228,7 +234,7 @@ function mediaChange(obj) {
       obj.src = 'images/nomic.png';
     }
   } else {
-    session.resume(id);
+    stream.resume();
 
     if (media === 'video') {
       obj.src = 'images/webcam.png';
@@ -266,178 +272,172 @@ function removeCover(videoBox) {
     }
   }
 }
-//sdk part
-async function initSession(username, room) {
-
-  const tokenId = randomId(10);
-  session = Dugon.createSession(signalServer, room, tokenId, { username });
-
-  session.onin = (tokenId, metadata) => {
-    console.log(tokenId, ' in');
-
-    const { username } = metadata;
-
-    generateParticipantRow(tokenId, username);
-
-    const stream = new MediaStream();
-    streams.set(tokenId, stream);
-  };
-
-  session.onout = tokenId => {
-    console.log(tokenId, ' out');
-
-    $(`#participantRow-${tokenId}`).remove();
-    //FIXME: maybe release stream?
-    // streams.delete(tokenId);
-  };
-
-  session.onclose = _ => {
-
-  };
-
-  session.onsender = (senderId, remoteTokenId, metadata) => {
-    // console.log(sender.id);
-    if (remoteTokenId == tokenId) {
-      console.log('local', senderId, metadata);
-      const { name } = metadata;
-      let id;
-      if (name === 'audio') {
-        $('#localAudioSwitch').disabled = false;
-        $('#localAudioSwitch').src = "images/mic.png";
-        $('#localAudioSwitch').dataset.enable = true;
-        $('#localAudioSwitch').dataset.id = senderId;
-      } else {
-        $('#localVideoSwitch').disabled = false;
-        $('#localVideoSwitch').src = "images/webcam.png";
-        $('#localVideoSwitch').dataset.enable = true;
-        $('#localVideoSwitch').dataset.id = senderId;
-      }
-
-    } else {
-      session.subscribe(senderId);
-    }
-  };
-  // remote sender state changed
-  session.onchange = (receiver, isPaused) => {
-
-    if (receiver.metadata.name === 'video') {
-      const videoBox = $(`#videoBox-${receiver.tokenId}`);
-
-      const videoSwitch = $(`#videoSwitch-${receiver.tokenId}`);
-
-      if (isPaused) {
-
-        videoSwitch.disabled = true;
-
-        if (videoSwitch.dataset.enable === 'true') {
-          addCover(videoBox);
-          videoSwitch.src = "images/nowebcam.png";
-        }
-
-        // videoSwitch.src = "images/webcam.png";
-        // videoSwitch.dataset.enable = true;
-      } else {
-        videoSwitch.disabled = false;
-
-        if (videoSwitch.dataset.enable === 'true') {
-          removeCover(videoBox);
-          videoSwitch.src = "images/webcam.png";
-        }
-      }
-
-    } else if (receiver.metadata.name === 'audio') {
-      const audioSwitch = $(`#audioSwitch-${receiver.tokenId}`);
-
-      if (isPaused) {
-
-        audioSwitch.disabled = true;
-
-        if (audioSwitch.dataset.enable === 'true') {
-          audioSwitch.src = "images/nomic.png";
-        }
-
-      } else {
-        audioSwitch.disabled = false;
-
-        if (audioSwitch.dataset.enable === 'true') {
-          audioSwitch.src = "images/mic.png";
-        }
-      }
-    }
 
 
-  };
+function changeState(userId, kind, isPaused) {
 
+  if (kind === 'video') {
+    const videoBox = $(`#videoBox-${userId}`);
 
-  session.onmedia = (media, receiver) => {
+    const videoSwitch = $(`#videoSwitch-${userId}`);
 
-    const stream = streams.get(receiver.tokenId);
-    if ($(`#videoBox-${receiver.tokenId}`)) {
-      stream.addTrack(media.track);
-    } else {
-      const videoBox = document.createElement('div');
-      videoBox.id = `videoBox-${receiver.tokenId}`;
+    if (isPaused) {
 
-      videoBox.classList.add('videoBox');
+      videoSwitch.disabled = true;
 
-      const newVideo = document.createElement('video');
-      newVideo.autoplay = true;
-      newVideo.setAttribute('poster', 'images/loading.gif');
-
-      stream.addTrack(media.track);
-      newVideo.srcObject = stream;
-      videoBox.append(newVideo);
-
-      $('#videoList').append(videoBox);
-    }
-
-    if (media.kind === 'video') {
-      const videoSwitch = $(`#videoSwitch-${receiver.tokenId}`);
-      videoSwitch.dataset.id = receiver.senderId;
-
-      if (receiver.senderPaused) {
-        const videoBox = $(`#videoBox-${receiver.tokenId}`);
+      if (videoSwitch.dataset.enable === 'true') {
         addCover(videoBox);
-
-      } else {
-        videoSwitch.disabled = false;
-        videoSwitch.src = "images/webcam.png";
-        videoSwitch.dataset.enable = true;
+        videoSwitch.src = "images/nowebcam.png";
       }
-    } else if (media.kind === 'audio') {
-      const audioSwitch = $(`#audioSwitch-${receiver.tokenId}`);
-      audioSwitch.dataset.id = receiver.senderId;
 
-      if (!receiver.senderPaused) {
-        audioSwitch.disabled = false;
+      // videoSwitch.src = "images/webcam.png";
+      // videoSwitch.dataset.enable = true;
+    } else {
+      videoSwitch.disabled = false;
+
+      if (videoSwitch.dataset.enable === 'true') {
+        removeCover(videoBox);
+        videoSwitch.src = "images/webcam.png";
+      }
+    }
+
+  } else if (kind === 'audio') {
+    const audioSwitch = $(`#audioSwitch-${userId}`);
+
+    if (isPaused) {
+
+      audioSwitch.disabled = true;
+
+      if (audioSwitch.dataset.enable === 'true') {
+        audioSwitch.src = "images/nomic.png";
+      }
+
+    } else {
+      audioSwitch.disabled = false;
+
+      if (audioSwitch.dataset.enable === 'true') {
         audioSwitch.src = "images/mic.png";
-        audioSwitch.dataset.enable = true;
       }
     }
   }
+}
+
+//sdk part
+async function initSession(username, roomId) {
+
+  let room = Dugon.Room(signalServer, {
+    roomId,
+    username,
+  });
+
+  room.onuser = async user => {
+    console.log(user.name, ' in');
+    generateParticipantRow(user.id, user.name);
+
+    user.onstream = (stream) => {
+      console.log('remote stream');
+      room.subscribe(stream);
+      // stream.on
+      stream.onsub = () => {
+        streams.set(stream.id, stream);
+
+        if ($(`#videoBox-${user.id}`) === null) {
+          const videoBox = document.createElement('div');
+          videoBox.id = `videoBox-${user.id}`;
+
+          videoBox.classList.add('videoBox');
+
+          const newVideo = document.createElement('video');
+          newVideo.id = `video-${user.id}`;
+          newVideo.autoplay = true;
+          newVideo.setAttribute('poster', 'images/loading.gif');
+
+          videoBox.append(newVideo);
+
+          $('#videoList').append(videoBox);
+        }
 
 
-  session.onunsubscribed = (receiver) => {
-    console.log('onunreceiver');
+        if (stream.kind === 'video') {
+          const videoSwitch = $(`#videoSwitch-${user.id}`);
+          videoSwitch.dataset.id = stream.id;
 
+          if (stream.pubPaused) {
+            const videoBox = $(`#videoBox-${user.id}`);
+            addCover(videoBox);
+          } else {
+            videoSwitch.disabled = false;
+            videoSwitch.src = "images/webcam.png";
+            videoSwitch.dataset.enable = true;
+          }
 
-    const stream = streams.get(receiver.tokenId);
-    stream.removeTrack(stream.getTrackById(receiver.id));
-    if (stream.getTracks().length === 0) {
-      $(`#videoBox-${receiver.tokenId}`).remove();
-      streams.delete(receiver.tokenId);
-    }
+        } else if (stream.kind === 'audio') {
+          const audioSwitch = $(`#audioSwitch-${user.id}`);
+          audioSwitch.dataset.id = stream.id;
+
+          if (!stream.pubPaused) {
+            audioSwitch.disabled = false;
+            audioSwitch.src = "images/mic.png";
+            audioSwitch.dataset.enable = true;
+          }
+        }
+
+        stream.play(`#video-${user.id}`);
+      };
+
+      stream.onclose = () => {
+        console.log('close');
+
+        streams.delete(stream.id);
+        // TODO(cc): 10/29/24 
+        //   stream.removeTrack(stream.getTrackById(receiver.id));
+        //   if (stream.getTracks().length === 0) {
+        //     $(`#videoBox-${receiver.tokenId}`).remove();
+        //   }
+      };
+
+      stream.onpause = () => {
+        console.log('pause');
+        changeState(user.id,stream.kind,true);
+      };
+
+      stream.onresume = () => {
+        console.log('resume');
+        changeState(user.id,stream.kind,false);
+      };
+    };
+
+    user.onleave = () => {
+      console.log(user.id, ' out');
+      $(`#participantRow-${user.id}`).remove();
+    };
   };
 
-  await session.connect({ pub: true, sub: true });
+  room.onclose = () => {
 
-  if (audioSource) {
-    session.publish(audioSource, { metadata: { name: 'audio' } });
+  };
+
+  await room.connect();
+  console.log('join!');
+
+  if (audioStream) {
+    room.publish(audioStream, { metadata: { name: 'audio' } });
+
+    $('#localAudioSwitch').disabled = false;
+    $('#localAudioSwitch').src = "images/mic.png";
+    $('#localAudioSwitch').dataset.enable = true;
+    $('#localAudioSwitch').dataset.id = audioStream.id;
   }
 
-  if (videoSource) {
-    session.publish(videoSource, { metadata: { name: 'video' } });
+  if (videoStream) {
+    room.publish(videoStream, { metadata: { name: 'audio' } });
+
+    $('#localVideoSwitch').disabled = false;
+    $('#localVideoSwitch').src = "images/webcam.png";
+    $('#localVideoSwitch').dataset.enable = true;
+    $('#localVideoSwitch').dataset.id = audioStream.id;
   }
+
 }
 
 //animation
@@ -568,14 +568,17 @@ window.onload = async _ => {
   if (video || audio) {
     try {
       if (video) {
-        videoSource = await Dugon.createVideoSource();
-        localStream.addTrack(videoSource.track);
+        videoStream = await Dugon.Stream({ video: true });
+        videoStream.play('#localVideo')
+
+        streams.set(videoStream.id, videoStream);
       }
       if (audio) {
-        audioSource = await Dugon.createAudioSource();
-        localStream.addTrack(audioSource.track);
+        audioStream = await Dugon.Stream({ audio: true });
+        audioStream.play('#localVideo')
+
+        streams.set(audioStream.id, audioStream);
       }
-      $('#localVideo').srcObject = localStream;
     } catch (e) {
       console.log(e);
       alert('Local devices was banned.Check your Chrome Settings.');
