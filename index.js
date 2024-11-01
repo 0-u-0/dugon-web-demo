@@ -251,7 +251,6 @@ function mediaChange(obj) {
   obj.dataset.enable = !(enable === 'true');
 }
 
-
 function addCover(videoBox) {
   for (let i = 0; i < videoBox.children.length; i++) {
     const c = videoBox.children[i];
@@ -394,12 +393,12 @@ async function initSession(username, roomId) {
 
       stream.onpause = () => {
         console.log('pause');
-        changeState(user.id,stream.kind,true);
+        changeState(user.id, stream.kind, true);
       };
 
       stream.onresume = () => {
         console.log('resume');
-        changeState(user.id,stream.kind,false);
+        changeState(user.id, stream.kind, false);
       };
     };
 
@@ -407,7 +406,7 @@ async function initSession(username, roomId) {
       console.log(user.id, ' out');
       $(`#participantRow-${user.id}`).remove();
 
-      if($(`#videoBox-${user.id}`) !== null){
+      if ($(`#videoBox-${user.id}`) !== null) {
         $(`#videoBox-${user.id}`).remove();
       }
     };
@@ -507,30 +506,32 @@ function drawerEventListen() {
   }
 }
 
-async function loginEnter(event) {
-  if (event.keyCode === 13) {
-    let username, room;
+async function loginEnter() {
+  let username, room;
 
-    if ($('#usernameInput').value === '') {
-      username = randomId(10);
-    } else {
-      username = $('#usernameInput').value;
-    }
-
-    if ($('#roomInput').value === '') {
-      room = randomId(10);
-    } else {
-      room = $('#roomInput').value;
-    }
-
-    $('#myName').innerText = username;
-
-    await animation();
-    await initSession(username, room);
-
+  if ($('#usernameInput').value === '') {
+    username = randomId(10);
+  } else {
+    username = $('#usernameInput').value;
   }
+
+  if ($('#roomInput').value === '') {
+    room = randomId(10);
+  } else {
+    room = $('#roomInput').value;
+  }
+
+  $('#myName').innerText = username;
+
+  await animation();
+  await initSession(username, room);
 }
 
+function keyDownEvent(event) {
+  if (event.keyCode === 13) {
+    loginEnter();
+  }
+}
 //
 window.onload = async _ => {
   const { name: browserName, version, versionString, chromeVersion } = browserDetect();
@@ -545,8 +546,8 @@ window.onload = async _ => {
   storeValue('#usernameInput');
   storeValue('#roomInput');
 
-  $('#usernameInput').onkeydown = loginEnter;
-  $('#roomInput').onkeydown = loginEnter;
+  $('#usernameInput').onkeydown = keyDownEvent;
+  $('#roomInput').onkeydown = keyDownEvent;
 
   drawerEventListen();
 
