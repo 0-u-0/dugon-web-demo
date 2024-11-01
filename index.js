@@ -188,7 +188,7 @@ function randomId(length) {
   return result;
 }
 
-function blocker(secodes) {
+function sleep(secodes) {
   return new Promise((y, n) => {
     setTimeout(function () {
       y();
@@ -444,18 +444,18 @@ async function initSession(username, roomId) {
 async function animation() {
 
   $("#maskLayer").classList.add("disappear");
-  await blocker(0.5);
+  await sleep(0.5);
   $("#maskLayer").style.display = 'none';
 
   $("#itemList").classList.add("fadein");
 
   $("#myselfItem").classList.add("slidein");
 
-  await blocker(0.5);
+  await sleep(0.5);
 
   $("#participantItem").classList.add("slidein");
 
-  await blocker(0.8);
+  await sleep(0.8);
 
   $("#participantsContent").style.maxHeight = calcContentHeight() + 'px';
 
@@ -478,7 +478,7 @@ async function animation() {
 
   $("#pollItem").classList.add("slidein");
 
-  await blocker(0.8)
+  await sleep(0.8)
   $("#videoList").classList.add("fadein");
 }
 
