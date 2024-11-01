@@ -435,7 +435,7 @@ async function initSession(username, roomId) {
     $('#localVideoSwitch').disabled = false;
     $('#localVideoSwitch').src = "images/webcam.png";
     $('#localVideoSwitch').dataset.enable = true;
-    $('#localVideoSwitch').dataset.id = audioStream.id;
+    $('#localVideoSwitch').dataset.id = videoStream.id;
   }
 
 }
