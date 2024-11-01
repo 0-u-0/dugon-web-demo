@@ -322,6 +322,58 @@ function changeState(userId, kind, isPaused) {
   }
 }
 
+function createVideoBox(userId) {
+  if ($(`#videoBox-${userId}`) === null) {
+    const videoBox = document.createElement('div');
+    videoBox.id = `videoBox-${userId}`;
+
+    videoBox.classList.add('videoBox');
+
+    const newVideo = document.createElement('video');
+    newVideo.id = `video-${userId}`;
+    newVideo.autoplay = true;
+    newVideo.setAttribute('poster', 'images/loading.gif');
+
+    videoBox.append(newVideo);
+
+    $('#videoList').append(videoBox);
+  }
+}
+
+function updateBoxSwitcherState(userId, streamId, kind, pubPaused) {
+  if (kind === 'video') {
+    const videoSwitch = $(`#videoSwitch-${userId}`);
+    videoSwitch.dataset.id = streamId;
+
+    if (pubPaused) {
+      const videoBox = $(`#videoBox-${userId}`);
+      addCover(videoBox);
+    } else {
+      videoSwitch.disabled = false;
+      videoSwitch.src = "images/webcam.png";
+      videoSwitch.dataset.enable = true;
+    }
+
+  } else if (kind === 'audio') {
+    const audioSwitch = $(`#audioSwitch-${userId}`);
+    audioSwitch.dataset.id = streamId;
+
+    if (!pubPaused) {
+      audioSwitch.disabled = false;
+      audioSwitch.src = "images/mic.png";
+      audioSwitch.dataset.enable = true;
+    }
+  }
+}
+
+function removeBoxRow(userId){
+  $(`#participantRow-${userId}`).remove();
+
+  if ($(`#videoBox-${userId}`) !== null) {
+    $(`#videoBox-${userId}`).remove();
+  }
+}
+
 //sdk part
 async function initSession(username, roomId) {
 
@@ -336,51 +388,15 @@ async function initSession(username, roomId) {
 
     user.onstream = (stream) => {
       console.log('remote stream');
+
       room.subscribe(stream);
       // stream.on
       stream.onsub = () => {
         streams.set(stream.id, stream);
 
-        if ($(`#videoBox-${user.id}`) === null) {
-          const videoBox = document.createElement('div');
-          videoBox.id = `videoBox-${user.id}`;
+        createVideoBox(user.id);
 
-          videoBox.classList.add('videoBox');
-
-          const newVideo = document.createElement('video');
-          newVideo.id = `video-${user.id}`;
-          newVideo.autoplay = true;
-          newVideo.setAttribute('poster', 'images/loading.gif');
-
-          videoBox.append(newVideo);
-
-          $('#videoList').append(videoBox);
-        }
-
-
-        if (stream.kind === 'video') {
-          const videoSwitch = $(`#videoSwitch-${user.id}`);
-          videoSwitch.dataset.id = stream.id;
-
-          if (stream.pubPaused) {
-            const videoBox = $(`#videoBox-${user.id}`);
-            addCover(videoBox);
-          } else {
-            videoSwitch.disabled = false;
-            videoSwitch.src = "images/webcam.png";
-            videoSwitch.dataset.enable = true;
-          }
-
-        } else if (stream.kind === 'audio') {
-          const audioSwitch = $(`#audioSwitch-${user.id}`);
-          audioSwitch.dataset.id = stream.id;
-
-          if (!stream.pubPaused) {
-            audioSwitch.disabled = false;
-            audioSwitch.src = "images/mic.png";
-            audioSwitch.dataset.enable = true;
-          }
-        }
+        updateBoxSwitcherState(user.id, stream.id, stream.kind, stream.pubPaused);
 
         stream.play(`#video-${user.id}`);
       };
@@ -404,11 +420,8 @@ async function initSession(username, roomId) {
 
     user.onleave = () => {
       console.log(user.id, ' out');
-      $(`#participantRow-${user.id}`).remove();
 
-      if ($(`#videoBox-${user.id}`) !== null) {
-        $(`#videoBox-${user.id}`).remove();
-      }
+      removeBoxRow();
     };
   };
 
