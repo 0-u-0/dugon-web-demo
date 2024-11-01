@@ -375,7 +375,7 @@ function removeBoxRow(userId){
 }
 
 //sdk part
-async function initSession(username, roomId) {
+async function initRoom(username, roomId) {
 
   let room = Dugon.Room(signalServer, {
     roomId,
@@ -537,7 +537,7 @@ async function loginEnter() {
   $('#myName').innerText = username;
 
   await animation();
-  await initSession(username, room);
+  await initRoom(username, room);
 }
 
 function keyDownEvent(event) {
