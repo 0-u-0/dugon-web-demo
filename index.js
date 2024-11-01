@@ -390,11 +390,6 @@ async function initSession(username, roomId) {
         console.log('close');
 
         streams.delete(stream.id);
-        // TODO(cc): 10/29/24 
-        //   stream.removeTrack(stream.getTrackById(receiver.id));
-        //   if (stream.getTracks().length === 0) {
-        //     $(`#videoBox-${receiver.tokenId}`).remove();
-        //   }
       };
 
       stream.onpause = () => {
@@ -411,6 +406,10 @@ async function initSession(username, roomId) {
     user.onleave = () => {
       console.log(user.id, ' out');
       $(`#participantRow-${user.id}`).remove();
+
+      if($(`#videoBox-${user.id}`) !== null){
+        $(`#videoBox-${user.id}`).remove();
+      }
     };
   };
 
